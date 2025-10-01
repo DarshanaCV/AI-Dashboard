@@ -12,10 +12,12 @@ app=Flask(__name__)
 
 model=joblib.load("anomaly_model.pkl")
 
+#database config
 app.config['SQLALCHEMY_DATABASE_URI']='sqlite:///summaries.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 db=SQLAlchemy(app)
 
+#schema definition
 class UploadSummary(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     filename=db.Column(db.String(100))
@@ -26,7 +28,7 @@ class UploadSummary(db.Model):
 with app.app_context():
     db.create_all()
 
-
+#index route to upload csv file
 @app.route('/')
 def index(): 
     html="""
@@ -171,6 +173,7 @@ def index():
         """
     return html
 
+#upload route to detected anomalies
 @app.route('/upload',methods=['POST'])
 def upload():
     if 'csv_file' not in request.files:
@@ -209,6 +212,7 @@ def upload():
     anomalies_s1=pd.DataFrame(sensor1_anomalies) if sensor1_anomalies else pd.DataFrame()
     anomalies_s2=pd.DataFrame(sensor2_anomalies) if sensor2_anomalies else pd.DataFrame()
 
+    #plotting
     fig,(ax1,ax2)=plt.subplots(2,1,figsize=(12, 8))
 
     ax1.plot(df['time'],df['sensor1'],linewidth=2,color='blue',label='Sensor 1')
@@ -449,21 +453,22 @@ def upload():
 
     return html
 
-@app.route('/api/summaries', methods=['GET'])
+#api/summaries route to get all summaries
+@app.route('/api/summaries',methods=['GET'])
 def get_summaries():
-    summaries = UploadSummary.query.all()
-    result = []
+    summaries=UploadSummary.query.all()
+    result=[]
     for s in summaries:
         result.append({
-            "id": s.id,
-            "filename": s.filename,
-            "summary": json.loads(s.summary),
-            "sensor1_anomalies": json.loads(s.sensor1_anomalies),
-            "sensor2_anomalies": json.loads(s.sensor2_anomalies)
+            "id":s.id,
+            "filename":s.filename,
+            "summary":json.loads(s.summary),
+            "sensor1_anomalies":json.loads(s.sensor1_anomalies),
+            "sensor2_anomalies":json.loads(s.sensor2_anomalies)
         })
-    return {"summaries": result}
+    return{"summaries":result}
 
-
+#api/summary/id to get a specific summary
 @app.route('/api/summary/<int:summary_id>',methods=['GET'])
 def get_summary_by_id(summary_id):
     summary=UploadSummary.query.get(summary_id)
